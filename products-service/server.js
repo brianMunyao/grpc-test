@@ -1,10 +1,21 @@
 import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
 
-const packageDef = protoLoader.loadSync('product.proto', {});
+const packageDef = protoLoader.loadSync('../grpc-protos/product.proto', {});
 const grpcObject = grpc.loadPackageDefinition(packageDef);
 
 const productPackage = grpcObject.product;
+
+// Load email proto to connect to the email service
+const emailPackageDef = protoLoader.loadSync('../grpc-protos/email.proto', {});
+const emailGrpcObject = grpc.loadPackageDefinition(emailPackageDef);
+const emailPackage = emailGrpcObject.email;
+
+// Create a client to connect to the email service running on port 5000
+const emailClient = new emailPackage.EmailService(
+	'localhost:5000',
+	grpc.credentials.createInsecure()
+);
 
 // simulate db
 const products = [];
@@ -19,6 +30,21 @@ const createProduct = (call, callback) => {
 	};
 
 	products.push(newProductData);
+
+	emailClient.sendEmail(
+		{
+			to: 'brianmunyao6@gmail.com', // Set this dynamically if needed
+			subject: 'New Product Added',
+			text: `A new product "${newProductData.name}" has been added to the catalog.`,
+		},
+		(err, response) => {
+			if (err) {
+				console.error('Error sending email:', err);
+			} else {
+				console.log('Email sent successfully:', response);
+			}
+		}
+	);
 
 	return callback(null, { product: newProductData });
 };
